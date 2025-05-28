@@ -3,9 +3,14 @@ import { words, wordsSchema, wordsInsertSchema } from "../drizzle/schema/schema"
 import API from "./api";
 import { desc, asc } from "drizzle-orm";
 
-class Words extends API {
 
-	async getWords() {
+/*
+	Exporting multiple services via Named Worker Entry Point
+	https://developers.cloudflare.com/workers/runtime-apis/bindings/service-bindings/rpc/#named-entrypoints
+*/
+export class Words extends API {
+
+	async get() {
 		const tables = await this.db.select().from(words).orderBy().limit(5).all();
 		const validated = tables.map((word) => wordsSchema.parse(word));
 
@@ -13,7 +18,7 @@ class Words extends API {
 		return tables;
 	}
 
-	async postWords(data: typeof words.$inferInsert) {
+	async post(data: typeof words.$inferInsert) {
 		const item = wordsInsertSchema.parse(data);
 		// @ts-ignore
 		const validated = await this.db.insert(words).values(item);
@@ -24,19 +29,23 @@ class Words extends API {
 
 import { user, userInsertSchema } from "../drizzle/schema/schema";
 
-class User extends API {
+export class User extends API {
 
-	async listUsers() {}
+	async list() {}
 
-	async signUser(data: typeof user.$inferInsert) {
+	async sign(data: typeof user.$inferInsert) {
 		const item = userInsertSchema.parse(data);
 		// @ts-ignore
 		this.db.insert(user).values(item);
 	}
 
+	async tests() {
+		return 'tests';
+	}
+
 }
 
-export default class Router extends Words {
+export default class Router {
 
 
 	async fetch(
@@ -45,7 +54,6 @@ export default class Router extends Words {
 
 		const route = new URL(request.url).pathname;
 
-		if (route === '/words') return new Response(JSON.stringify(this.getWords()), {status: 200,headers: { "Content-Type": "text/plain" },});
 
 		return new Response("Hello from API", {
 			status: 200,
@@ -58,5 +66,8 @@ export default class Router extends Words {
 	}
 }
 
-export type WordsRouter = InstanceType<typeof Router>;
+export type UserService = InstanceType<typeof User>;
+export type WordsService = InstanceType<typeof Words>;
+
+
 
