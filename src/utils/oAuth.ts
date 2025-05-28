@@ -34,63 +34,15 @@ export function generateGoogleOAuthURL({
 	return `${baseUrl}?${params.toString()}`;
 }
 
-import type { APIRoute, APIContext } from "astro";
-
 /*
 	generalised method to handle oauths
 
 	getter provides us required params from astro context
 */
 
-export function withOauth(
-	getter: ( 
-		context: APIContext
-	) => {
-		client_id: string | undefined,
-		client_secret: string | undefined,
-		token_path: string,
-		auth_path: string,
-	},
-	handler: (
-		context: APIContext,
-		user: {sub: number, name: string, given_name: string, picture: URL, email: string},
-		state: string | null
-	) => Promise<Response>,
-	log: (error: any, context: APIContext) => void = (error: any) => console.error(error)
-): APIRoute {
-	return async (context) => {
 
-		const {client_id, client_secret, token_path, auth_path} = getter(context);
-		if (!client_id || !client_secret) return response('missing google api credentials', 500);
-	
-		const url = new URL(context.request.url);
-		const code = url.searchParams.get('code');
-		const state = url.searchParams.get('state');
-	
-		if (!code) return response('missing oauth2 code', 403)
-	
-	
-		const this_endpoint_url = new URL(context.request.url);
-		this_endpoint_url.search = '';
-		this_endpoint_url.protocol = 'https'
-	
-		try {
 
-			const user = await getUserOauth(
-				code, client_id, client_secret, this_endpoint_url.href,
-				token_path,
-				auth_path
-			) as {sub: number, name: string, given_name: string, picture: URL, email: string}
-
-			return await handler(context, user, state);
-		} catch (error: any) {
-			log(error, context);
-			return response(error.message);
-		}
-	}
-}
-
-async function getUserOauth(
+export async function getUserOauth(
 	code: string,
 	client_id: string,
 	client_secret: string,
@@ -128,17 +80,42 @@ async function getUserOauth(
 		throw new Error(`Failed to fetch user info: ${error}`);
 	}
 	const user = await userInfoResponse.json();
-	return user
+	return user as {sub: number, name: string, given_name: string, family_name: string, picture: URL, email: string};
 }
 
-function response(
-	message: string | {},
-	status: number = 400
-) {
-	return new Response(
-		JSON.stringify({
-			message
-		}),
-		{status}
-	);
+type AuthCreds = {
+	client_id: string | undefined,
+	client_secret: string | undefined,
+	token_path: string,
+	auth_path: string
 }
+
+export function getAuthFlowAction (
+	props: AuthCreds,
+	service_name: string,
+) {
+
+	function response(message: string, code: number) {
+		return {message, code}
+	}
+
+	return async function authFlowAction(url: URL) {
+		const {client_id, client_secret, token_path, auth_path} = props;
+		if (!client_id || !client_secret) return response(`missing ${service_name} api credentials`, 500);
+		
+		const code = url.searchParams.get('code');
+		const state = url.searchParams.get('state');
+	
+		if (!code) return response('missing oauth2 code', 403);
+
+		url.search = '';
+		url.protocol = 'https'
+		try {
+			const user = await getUserOauth(code, client_id, client_secret, url.href, token_path, auth_path);
+			return user;
+		} catch (error: any) {
+			return response(error.message, 400);
+		}
+	}
+}
+

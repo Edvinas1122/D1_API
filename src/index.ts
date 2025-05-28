@@ -42,7 +42,25 @@ export class User extends API {
 	async tests() {
 		return 'tests';
 	}
+}
 
+import { WorkerEntrypoint } from "cloudflare:workers";
+import { getAuthFlowAction } from "./utils/oAuth";
+
+export class Auth extends WorkerEntrypoint {
+
+	private flows = {
+		google: getAuthFlowAction({
+			client_id: this.env.PUBLIC_GOOGLE_ID,
+			client_secret: this.env.GOOGLE_SECRET,
+			token_path: 'https://oauth2.googleapis.com/token',
+			auth_path: 'https://www.googleapis.com/oauth2/v3/userinfo',
+		}, 'google')
+	}
+
+	async google(url: string) {
+		return await this.flows.google(new URL(url));
+	}
 }
 
 export default class Router {
@@ -68,6 +86,7 @@ export default class Router {
 
 export type UserService = InstanceType<typeof User>;
 export type WordsService = InstanceType<typeof Words>;
+export type AuthService = InstanceType<typeof Auth>;
 
 
 
