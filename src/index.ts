@@ -1,14 +1,13 @@
 import { words, wordsSchema, wordsInsertSchema } from "../drizzle/schema/schema";
-
-import API from "./api";
-import { desc, asc } from "drizzle-orm";
-
+import { OnError } from "./utils/error";
+import DB from "./api";
 
 /*
 	Exporting multiple services via Named Worker Entry Point
 	https://developers.cloudflare.com/workers/runtime-apis/bindings/service-bindings/rpc/#named-entrypoints
 */
-export class Words extends API {
+
+export class Words extends DB {
 
 	async get() {
 		const tables = await this.db.select().from(words).orderBy().limit(5).all();
@@ -19,8 +18,8 @@ export class Words extends API {
 	}
 
 	async post(data: typeof words.$inferInsert) {
-		const item = wordsInsertSchema.parse(data);
-		// @ts-ignore
+		const item = wordsInsertSchema.parse(data) as typeof words.$inferInsert;
+
 		const validated = await this.db.insert(words).values(item);
 		return validated;
 	}
@@ -28,27 +27,39 @@ export class Words extends API {
 }
 
 import { user, userInsertSchema } from "../drizzle/schema/schema";
+import { getTokenActions } from "./utils/jwt";
 
-export class User extends API {
+export class User extends DB {
 
-	async list() {}
+	private utils = getTokenActions({
+		secret: this.env.GOOGLE_SECRET,
+		expire: '2w'
+	});
 
-	async sign(data: typeof user.$inferInsert) {
-		const item = userInsertSchema.parse(data);
-		// @ts-ignore
-		this.db.insert(user).values(item);
+	async list() {
+		return await this.all(user);
 	}
 
-	async tests() {
-		return 'tests';
+	@OnError('sign-in error')
+	async sign(data: typeof user.$inferInsert) {
+		const user_data = userInsertSchema.parse(data) as typeof user.$inferInsert;
+
+		const status = await this.db.insert(user).values(user_data)
+			.onConflictDoNothing({target: user.email});
+		
+		const token = await this.utils.sign(user_data);
+
+		return {token};
+	}
+
+	async verify(token: string) {
+		return await this.utils.verify(token);
 	}
 }
 
-import { WorkerEntrypoint } from "cloudflare:workers";
 import { getAuthFlowAction } from "./utils/oAuth";
 
-export class Auth extends WorkerEntrypoint {
-
+export class Auth extends DB {
 	private flows = {
 		google: getAuthFlowAction({
 			client_id: this.env.PUBLIC_GOOGLE_ID,

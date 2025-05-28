@@ -80,7 +80,7 @@ export async function getUserOauth(
 		throw new Error(`Failed to fetch user info: ${error}`);
 	}
 	const user = await userInfoResponse.json();
-	return user as {sub: number, name: string, given_name: string, family_name: string, picture: URL, email: string};
+	return user as {sub: string, name: string, given_name: string, family_name: string, picture: string, email: string};
 }
 
 type AuthCreds = {

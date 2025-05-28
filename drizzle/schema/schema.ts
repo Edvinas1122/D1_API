@@ -10,16 +10,14 @@ export const words = sqliteTable("words", {
 
 export const wordsSchema = createSelectSchema(words);
 export const wordsInsertSchema = createInsertSchema(words);
-// export type NewWord 
-
 
 export const user = sqliteTable('user', {
 	email: text().primaryKey(),
-	given_name: text(),
-	family_name: text(),
-	full_name: text(),
-	picture: text(),
-	sub: integer(),
+	given_name: text().notNull(),
+	family_name: text().notNull(),
+	name: text().notNull(),
+	picture: text().notNull(),
+	sub: text().notNull(),
 });
 
 export const userInsertSchema = createInsertSchema(user);

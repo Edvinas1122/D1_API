@@ -15,6 +15,13 @@
       "when": 1747980332116,
       "tag": "0001_heavy_the_hunter",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1748442590517,
+      "tag": "0002_safe_kronos",
+      "breakpoints": true
     }
   ]
 }
