@@ -1,4 +1,4 @@
-export function OnError(message = "Something went wrong", status = 400) {
+export function OnError(message = "Something went wrong", log = false, status = 400) {
 	return function <T>(
 		originalMethod: (this: T, ...args: any[]) => any,
 		context: ClassMethodDecoratorContext<T>
@@ -7,7 +7,9 @@ export function OnError(message = "Something went wrong", status = 400) {
 			try {
 				return await originalMethod.apply(this, args);
 			} catch (error: any) {
-				return {message: `${message}: ${error?.message}`}
+				const define = {message: `${message}: ${error?.message}`}
+				log && console.error(define);
+				return JSON.stringify(define);
 			}
 		};
 	};

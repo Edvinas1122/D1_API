@@ -9,14 +9,17 @@ import DB from "./api";
 
 export class Words extends DB {
 
+	@OnError()
 	async get() {
-		const tables = await this.db.select().from(words).orderBy().limit(5).all();
+		const tables = await this.db.select().from(words)
+		// .limit(5)
+		.all()
 		const validated = tables.map((word) => wordsSchema.parse(word));
 
-		console.log(tables)
-		return tables;
+		return tables.reverse();
 	}
 
+	@OnError('word insert:', true)
 	async post(data: typeof words.$inferInsert) {
 		const item = wordsInsertSchema.parse(data) as typeof words.$inferInsert;
 
@@ -42,7 +45,7 @@ export class User extends DB {
 
 	@OnError('sign-in error')
 	async sign(data: typeof user.$inferInsert) {
-		const user_data = userInsertSchema.parse(data) as typeof user.$inferInsert;
+		const user_data = userInsertSchema.parse(data);
 
 		const status = await this.db.insert(user).values(user_data)
 			.onConflictDoNothing({target: user.email});
@@ -74,8 +77,7 @@ export class Auth extends DB {
 	}
 }
 
-export default class Router {
-
+export default {
 
 	async fetch(
 		request: Request,
@@ -83,15 +85,10 @@ export default class Router {
 
 		const route = new URL(request.url).pathname;
 
-
 		return new Response("Hello from API", {
 			status: 200,
 			headers: { "Content-Type": "text/plain" },
 		});
-	}
-
-	async tests() {
-		return 'tests';
 	}
 }
 
