@@ -1,6 +1,6 @@
 import { words, wordsSchema, wordsInsertSchema } from "../drizzle/schema/schema";
 import { OnError } from "./utils/error";
-import DB from "./api";
+import DB, { Token } from "./api";
 
 /*
 	Exporting multiple services via Named Worker Entry Point
@@ -34,11 +34,6 @@ import { getTokenActions } from "./utils/jwt";
 
 export class User extends DB {
 
-	private utils = getTokenActions({
-		secret: this.env.GOOGLE_SECRET,
-		expire: '2w'
-	});
-
 	async list() {
 		return await this.all(user);
 	}
@@ -50,13 +45,13 @@ export class User extends DB {
 		const status = await this.db.insert(user).values(user_data)
 			.onConflictDoNothing({target: user.email});
 		
-		const token = await this.utils.sign(user_data);
+		const token = await this.token().sign(user_data);
 
 		return {token};
 	}
 
 	async verify(token: string) {
-		return await this.utils.verify(token);
+		return await this.token().verify(token);
 	}
 }
 
@@ -74,6 +69,130 @@ export class Auth extends DB {
 
 	async google(url: string) {
 		return await this.flows.google(new URL(url));
+	}
+}
+
+import {
+	chat, chatInsertSchema,
+	ch_member, memberInsertSchema,
+	message, messageInsertSchema
+} from "../drizzle/schema/schema";
+import { eq, and } from "drizzle-orm";
+
+export class Chat extends DB {
+
+	@OnError()
+	@Token()
+	async create(
+		email: string,
+		name: string,
+		description: string,
+	) {
+		console.log("creating", Date.now(), name, description)
+		const ch_object = chatInsertSchema.parse({
+			name,
+			description,
+		});
+		const ch_result = await this.db.insert(chat).values(ch_object);
+		console.log("contunure")
+		const mb_object = memberInsertSchema.parse({
+			chat: ch_object.id,
+			user: email,
+			role: 'admin'
+		});
+		const mb_result = await this.db.insert(ch_member).values(mb_object);
+		return {
+			ch_result,
+			mb_result
+		}
+	};
+
+	@OnError()
+	@Token()
+	async remove(email: string, chat_id: string) {
+		const member = this.getMember(email, chat_id);
+		console.log("deleting -", chat_id)
+		const result = await this.db.delete(chat)
+			.where(eq(chat.id, chat_id))
+			.returning()
+		console.log(result)
+		return result;
+	}
+
+	@OnError()
+	@Token()
+	async list(email: string) {
+		return await this.db
+			.select()
+			.from(chat)
+			.innerJoin(ch_member, eq(chat.id, ch_member.chat))
+			.where(eq(ch_member.user, email))
+			.all();
+	}
+
+	@OnError()
+	@Token()
+	async send(email: string, chat_id: string, content: string) {
+		const member = await this.getMember(email, chat_id);
+		const ms_object = messageInsertSchema.parse({
+			member: member.id,
+			chat: chat_id,
+			content
+		})
+		const result = await this.db.insert(message).values(ms_object);
+		return result;
+	}
+
+	@OnError()
+	@Token()
+	async messages(email: string, chat_id: string) {
+		const member = await this.getMember(email, chat_id);
+		const messages = await this.db
+			.select()
+			.from(message)
+			.where(eq(message.chat, chat_id))
+			.orderBy(message.sent)
+			.all();
+		return messages;
+	}
+
+	@OnError()
+	@Token()
+	async sign(email: string, chat_id: string, user_email: string, role: string = 'user') {
+		const member = await this.getMember(email, chat_id);
+		const ch_member_object = memberInsertSchema.parse({
+			user: user_email,
+			chat: chat_id,
+			role,
+		})
+		const result = await this.db.insert(ch_member).values(ch_member_object);
+		return result;
+	}
+
+	@OnError()
+	@Token()
+	async members(email: string, chat_id: string) {
+		const member = await this.getMember(email, chat_id);
+		const ch_members = await this.db.select().from(ch_member)
+			.where(eq(ch_member.chat, chat_id))
+			.all();
+		return ch_members;
+	}
+
+	private async getMember(email: string, chatId: string) {
+		const result = await this.db
+			.select()
+			.from(ch_member)
+			.where(
+				and(
+					eq(ch_member.user, email),
+					eq(ch_member.chat, chatId)
+				)
+			)
+			.limit(1)
+			.all();
+		if (result.length == 0) throw new Error('not a member');
+		return result[0];
 	}
 }
 
@@ -95,6 +214,7 @@ export default {
 export type UserService = InstanceType<typeof User>;
 export type WordsService = InstanceType<typeof Words>;
 export type AuthService = InstanceType<typeof Auth>;
+export type ChatService = InstanceType<typeof Chat>;
 
 
 
