@@ -28,7 +28,7 @@ export function getTokenActions({
 
 	async function verify(token: string) {
 		try {
-			const result = await jwtVerify(token, encoded_secret);
+			const result = await jwtVerify<{email: string}>(token, encoded_secret);
 			return result;
 		} catch (error: any) {
 			return {message: error.message, code: 403}

@@ -30,7 +30,6 @@ export class Words extends DB {
 }
 
 import { user, userInsertSchema } from "../drizzle/schema/schema";
-import { getTokenActions } from "./utils/jwt";
 
 export class User extends DB {
 
@@ -51,8 +50,11 @@ export class User extends DB {
 	}
 
 	async verify(token: string) {
-		return await this.token().verify(token);
+		type User = typeof user.$inferInsert;
+		return await this.token().verify(token) as JWTVerifyResult<User>;
 	}
+
+
 }
 
 import { getAuthFlowAction } from "./utils/oAuth";
@@ -78,6 +80,7 @@ import {
 	message, messageInsertSchema
 } from "../drizzle/schema/schema";
 import { eq, and } from "drizzle-orm";
+import { JWTVerifyResult } from "jose";
 
 export class Chat extends DB {
 
@@ -88,13 +91,12 @@ export class Chat extends DB {
 		name: string,
 		description: string,
 	) {
-		console.log("creating", Date.now(), name, description)
+		// const ch_object = await this.insert(chat, chatInsertSchema, {name, description});
 		const ch_object = chatInsertSchema.parse({
 			name,
 			description,
 		});
 		const ch_result = await this.db.insert(chat).values(ch_object);
-		console.log("contunure")
 		const mb_object = memberInsertSchema.parse({
 			chat: ch_object.id,
 			user: email,
@@ -121,10 +123,8 @@ export class Chat extends DB {
 
 	@OnError()
 	@Token()
-	async list(email: string) {
-		return await this.db
-			.select()
-			.from(chat)
+	async list(email: string, page: number = 0) {
+		return await this.paginate(chat, {page})
 			.innerJoin(ch_member, eq(chat.id, ch_member.chat))
 			.where(eq(ch_member.user, email))
 			.all();
@@ -145,11 +145,9 @@ export class Chat extends DB {
 
 	@OnError()
 	@Token()
-	async messages(email: string, chat_id: string) {
+	async messages(email: string, chat_id: string, page: number = 0) {
 		const member = await this.getMember(email, chat_id);
-		const messages = await this.db
-			.select()
-			.from(message)
+		const messages = await this.paginate(message, {page, pageSize: 20})
 			.where(eq(message.chat, chat_id))
 			.orderBy(message.sent)
 			.all();
@@ -171,10 +169,11 @@ export class Chat extends DB {
 
 	@OnError()
 	@Token()
-	async members(email: string, chat_id: string) {
+	async members(email: string, chat_id: string, page: number = 0) {
 		const member = await this.getMember(email, chat_id);
-		const ch_members = await this.db.select().from(ch_member)
+		const ch_members = await this.paginate(ch_member, {page})
 			.where(eq(ch_member.chat, chat_id))
+			.innerJoin(user, eq(ch_member.user, user.email))
 			.all();
 		return ch_members;
 	}
@@ -196,6 +195,8 @@ export class Chat extends DB {
 	}
 }
 
+
+
 export default {
 
 	async fetch(
@@ -210,11 +211,13 @@ export default {
 		});
 	}
 }
+import { SocketUtils } from "./socket";
+export {SocketUtils};
 
 export type UserService = InstanceType<typeof User>;
 export type WordsService = InstanceType<typeof Words>;
 export type AuthService = InstanceType<typeof Auth>;
 export type ChatService = InstanceType<typeof Chat>;
-
+export type SocketUtilsService = InstanceType<typeof SocketUtils>;
 
 

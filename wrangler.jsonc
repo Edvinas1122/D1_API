@@ -17,7 +17,7 @@
 			"database_id": "e19eec14-e40c-4272-8999-30d29d5d366e",
 			"migrations_dir": "drizzle/migrations"
 		}
-	]
+	],
 	/**
 	 * Smart Placement
 	 * Docs: https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
@@ -30,6 +30,10 @@
 	 * databases, object storage, AI inference, real-time communication and more.
 	 * https://developers.cloudflare.com/workers/runtime-apis/bindings/
 	 */
+
+	"services": [
+		{"binding": "Socket", "service": "socket", "entrypoint": "WebScoketGate"}
+	]
 
 	/**
 	 * Environment Variables
