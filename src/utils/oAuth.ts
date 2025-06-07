@@ -8,38 +8,12 @@ type LinkParams = {
 	state?: string
 };
 
-export function generateGoogleOAuthURL({
-	clientId,
-	redirectUri,
-	scope = ['openid', 'email', 'profile'],
-	responseType = 'code',
-	accessType = 'offline',
-	prompt = 'consent',
-	state = ''
-} : LinkParams) {
-	const baseUrl = 'https://accounts.google.com/o/oauth2/v2/auth';
-	const params = new URLSearchParams({
-	  client_id: clientId,
-	  redirect_uri: redirectUri,
-	  response_type: responseType,
-	  access_type: accessType,
-	  prompt: prompt,
-	  scope: scope.join(' '),
-	});
-  
-	if (state) {
-	  params.append('state', state);
-	}
-  
-	return `${baseUrl}?${params.toString()}`;
-}
 
 /*
 	generalised method to handle oauths
 
 	getter provides us required params from astro context
 */
-
 
 
 export async function getUserOauth(

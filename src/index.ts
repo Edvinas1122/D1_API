@@ -53,8 +53,17 @@ export class User extends DB {
 		type User = typeof user.$inferInsert;
 		return await this.token().verify(token) as JWTVerifyResult<User>;
 	}
+}
 
+import {log, insertLogSchema} from "../drizzle/schema/schema"
 
+export class Log extends DB {
+	
+	async add(route: string, country: string, ip: string, user?: string) {
+		const log_data = insertLogSchema.parse({route, country, ip, user});
+		const status = await this.db.insert(log).values(log_data);
+		return status;
+	}
 }
 
 import { getAuthFlowAction } from "./utils/oAuth";
@@ -219,5 +228,5 @@ export type WordsService = InstanceType<typeof Words>;
 export type AuthService = InstanceType<typeof Auth>;
 export type ChatService = InstanceType<typeof Chat>;
 export type SocketUtilsService = InstanceType<typeof SocketUtils>;
-
+export type LogService = InstanceType<typeof Log>;
 

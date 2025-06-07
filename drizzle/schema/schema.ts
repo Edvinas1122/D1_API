@@ -1,5 +1,5 @@
 import { relations, sql } from "drizzle-orm";
-import { sqliteTable, integer, text, SQLiteColumn } from "drizzle-orm/sqlite-core"
+import { sqliteTable, integer, text, SQLiteColumn, blob } from "drizzle-orm/sqlite-core"
 import { createSelectSchema, createSchemaFactory } from 'drizzle-zod';
 import { z } from "zod";
 import { ZodEmail, ZodEnum, ZodString } from "zod/v4"; 
@@ -32,6 +32,10 @@ export const wordsInsertSchema = createInsertSchema(words, {
 	language: (schema) => (schema as ZodString).max(30),
 });
 
+
+/*
+	User
+*/
 export const user = sqliteTable('user', {
 	email: text().primaryKey(),
 	given_name: text().notNull(),
@@ -44,6 +48,28 @@ export const user = sqliteTable('user', {
 
 export const userInsertSchema = createInsertSchema(user, {
 	// email: (schema) => (schema as ZodString).email()
+});
+
+/*
+	Logs
+*/
+
+export const log = sqliteTable('log', {
+	id: text().primaryKey(),
+	date: defaults.current_timestamp,
+	route: text().notNull(),
+	ip: text(),
+	country: text(),
+	user: text().references(() => user.email)
+});
+
+export const insertLogSchema = createInsertSchema(log, {
+	id: (schema) =>  (schema as ZodString).optional(),
+	country: (schema) => (schema as ZodString).max(2)
+})
+.transform((data) => {
+	const id = `${data.ip}:${Date.now()}`;
+	return { ...data, id};
 });
 
 /*
