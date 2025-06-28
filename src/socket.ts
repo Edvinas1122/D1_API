@@ -5,7 +5,7 @@ export class SocketUtils extends DB {
 	
 	@OnError()
 	async key(email: string) {
-		//@ts-ignore
+		// @ts-ignore
 		const response = await this.env.Socket.token(email);
 		return response;
 	}

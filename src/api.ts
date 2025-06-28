@@ -1,15 +1,18 @@
 import { WorkerEntrypoint } from "cloudflare:workers";
 import { drizzle } from "drizzle-orm/d1";
-import { TableConfig, SQLiteTableWithColumns } from "drizzle-orm/sqlite-core";
+import { TableConfig, SQLiteTableWithColumns, SQLiteTable  } from "drizzle-orm/sqlite-core";
+import { InferInsertModel } from "drizzle-orm";
+import { ZodPipe } from "zod/v4";
 
 interface Env {
 	MAIN: D1Database;
 	PUBLIC_GOOGLE_ID: string,
 	GOOGLE_SECRET: string,
-	Socket: Service
+	Socket: WebSocketGateService
 }
 
 import { getTokenActions } from "./utils/jwt";
+
 
 export default class DB extends WorkerEntrypoint<Env> {
 
@@ -24,20 +27,23 @@ export default class DB extends WorkerEntrypoint<Env> {
 			.limit(pageSize).offset(offset)
 	}
 
+	protected insert<
+		Table extends SQLiteTable,
+		Schema extends ZodPipe
+	>(
+		table: Table,
+		schema: Schema,
+		rawData: any
+	) {
 
-	// async insert<
-	// 	Schema extends ZodTypeAny,
-	// 	Table extends SQLiteTableWithColumns<any>
-	// 	>(
-	// 		table: Table,
-	// 		schema: Schema,
-	// 		rawData: z.infer<Schema>
-	// 	) {
-	// 		const parsed = schema.parse(rawData);
-	// 		const result = await this.db.insert(table).values(parsed);
-	// 		return {result, parsed};
-	// }
-
+		const object = schema.parse(rawData);
+		
+		const values = object as InferInsertModel<Table>;
+		
+		const query = this.db.insert(table).values(values)
+		.then((result) => ({result, object}))
+		return query
+	}
 
 	protected async all<T extends TableConfig>(source: SQLiteTableWithColumns<T>) {
 		return await this.db.select().from(source).all()
@@ -48,6 +54,53 @@ export default class DB extends WorkerEntrypoint<Env> {
 		expire: '2w'
 	});
 
+	protected withError<T, ARGS extends any[]>(handler: (...args: ARGS) => Promise<T>) {
+		return async (...args: ARGS) => {
+			try {
+				return await handler(...args);
+			} catch (error: any) {
+				console.error(error);
+				return {info: error.message}
+			}
+		}
+	}
+
+}
+
+import type {WebSocketGateService, AcceptedMessage} from "../../socket/src/index";
+
+
+export class EventDB extends DB {
+	private socket = this.env.Socket as unknown as WebSocketGateService;
+
+	protected event(users: [], message: AcceptedMessage) {
+		this.socket.send(users, message);
+	}
+
+	protected withEvent<
+		T extends AcceptedMessage['type'],                       // message type
+		A extends any[],                                        // function argument types
+		R extends AcceptedMessage['content']                    // resolved content type
+	>(
+		type: T,
+		handler: (...args: A) => Promise<R>,                    // handler accepts args A, returns R
+		informer: (...args: A) => Promise<string[]>             // informer accepts same args A
+	): (...args: A) => Promise<R> {                            // return function accepts A, returns R
+		return async (...args: A): Promise<R> => {
+			console.log('calling event handler');
+			const [message, receivers] = await Promise.all([
+				handler(...args),
+				informer(...args)
+			]);
+
+			this.socket.send(receivers, {
+				type,
+				content: message
+			} as AcceptedMessage);
+
+			return message;
+		};
+	}
 }
 
 /*

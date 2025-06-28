@@ -167,6 +167,14 @@ export const messageInsertSchema = createInsertSchema(message, {
 	content: (schema) => (schema as ZodString).min(1).max(1000),})
 .transform((data) => {
 	const id = `${data.member}:${data.chat}:${Date.now()}`;
-	return { ...data, id};
+	const sent = formatDate(new Date);
+	return { ...data, id, sent};
 });
+
+function formatDate(date: Date) {
+  const isoString = date.toISOString();
+  return isoString
+    .replace('T', ' ')
+    .replace(/\.\d{3}Z$/, '');
+}
 
