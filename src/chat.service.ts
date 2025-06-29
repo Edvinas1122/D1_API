@@ -1,91 +1,3 @@
-// import { ChatInterface } from "./interface";
-// import { eq, and } from "drizzle-orm";
-
-// class Chat extends ChatInterface {
-
-// 	// private chat = this.interact('chat')({
-// 	// 	list: (query, {member, chat}) => async (email: string) => query
-// 	// 		.innerJoin(member, eq(chat.id, member.chat))
-// 	// 		.where(eq(member.user, email))
-// 	// 		.all(),
-// 	// 	insert: (insertFn) => async (
-// 	// 		name: string,
-// 	// 		description: string
-// 	// 	) => insertFn({name, description})
-// 	// })
-
-// 	// private member = this.interact('member')({
-// 	// 	list: (query, {member, chat}) => async (
-// 	// 		chat: string
-// 	// 	) => query
-// 	// 		.where(eq(member.chat, chat))
-// 	// 		.all(),
-// 	// 	insert: (insertFn) => async (
-// 	// 		email: string,
-// 	// 		chat: string
-// 	// 	) => insertFn({user: email, chat})
-// 	// })
-	
-// 	// async list(email: string, page: number = 0) {
-// 	// 	return await this.chat.list(page)(email);
-// 	// }
-
-// 	// async create(email: string, name: string, description: string) {
-
-// 	// 	const q_1 = this.chat.insert()(name, description);
-// 	// }
-
-// 	async list(email: string, page: number = 0) {
-// 		const {member, chat} = this.tablesOnly;
-// 		const query = this.paginate('chat')(page)
-// 			.innerJoin(member, eq(chat.id, member.chat))
-// 			.where(eq(member.user, email))
-// 			.all()
-
-// 		return await query;
-// 	}
-
-
-// 	async create(
-// 		email: string,
-// 		name: string,
-// 		description: string
-// 	) {
-// 		const f_chat_promise = await this.put('chat').with({name, description});
-// 		const f_member_promise = await this.put('member').with({
-// 			chat: f_chat_promise.values.id,
-// 			user: email,
-// 			role: 'admin'
-// 		});
-// 		return f_chat_promise.result;
-// 	};
-
-// 	async remove(id: string) {
-// 		const {chat} = this.tablesOnly
-// 		return await this.delete('chat').where(eq(chat.id, id));
-// 	}
-
-// 	private async chatMember(email: string, chatId: string) {
-// 		const {member} = this.tablesOnly;
-// 		const result = await this.select('chat')
-// 			.where(
-// 				and(
-// 					eq(member.user, email),
-// 					eq(member.chat, chatId)
-// 				)
-// 			).limit(1).all();
-// 		if (result.length == 0) throw new Error('not a member');
-// 		return result[0];
-// 	}
-// }
-
-// type ChatService = InstanceType<typeof Chat>;
-// type ChatListReturn = Awaited<ReturnType<Chat['list']>>;
-
-// export type {ChatService, ChatListReturn};
-
-// export { Chat }
-
 import {
 	message,
 	messageInsertSchema,
@@ -118,10 +30,10 @@ class ChatInterface extends EventDB {
 					user: email,
 					role: 'admin',
 				})
-				return ch_object.result;
+				return {chat:ch_object.values, ch_member: mb_object.values};
 			} catch (error: any) {
 				const del_result = await this.db.delete(chat).where(eq(chat.id, ch_object.values.id));
-				return del_result.results;
+				return {error: error.message};
 			}
 		},
 		list: async (
