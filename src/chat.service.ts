@@ -3,6 +3,7 @@ import {
 	messageInsertSchema,
 	ch_member,
 	memberInsertSchema,
+	memberUpdateSchema,
 	chat,
 	chatInsertSchema,
 	user
@@ -10,11 +11,15 @@ import {
 
 import { EventDB } from "./interface"
 
-import { eq, and, desc} from "drizzle-orm";
+import { eq, and, desc, sql} from "drizzle-orm";
 
 class ChatInterface extends EventDB {
 
 	protected chat = {
+		// get: async (email: string, id: string) => {
+		// 	return this.db.select().from(chat)
+				
+		// },
 		create: async (
 			email: string,
 			name: string,
@@ -56,7 +61,6 @@ class ChatInterface extends EventDB {
 			chat: string,
 			page: number = 0
 		) => this._paginate(message, {page, pageSize: 20})
-			// .innerJoin(ch_member, eq(message.member, ch_member.id))
 			.where(eq(message.chat, chat)),
 		create: async (
 			email: string,
@@ -72,18 +76,33 @@ class ChatInterface extends EventDB {
 			.innerJoin(user, eq(ch_member.user, user.email))
 			.where(eq(ch_member.chat, chat))
 			.all(),
-		create: async (email: string, chat: string, user: string) => this
-			.insert(ch_member, memberInsertSchema, {
-				chat,
-				user,
-				role: 'participant'
-			})
+		create: async (email: string, chat: string, user_email: string) => {
+			const data = memberInsertSchema.parse({chat, user: user_email, role: 'invited'})
+			const query = await this.db
+				.with(this.chatMember(email, chat))
+				.insert(ch_member).values(data)
+				.returning();
+			const created = this.db.select().from(ch_member)
+				.innerJoin(user, eq(ch_member.user, user.email))
+				.where(eq(ch_member.id, query[0].id));
+			return created;
+		},
+		update: async (email: string, chat_id: string, role: string) => {
+			const data = memberUpdateSchema.parse({role})
+			this.db
+				.with(this.chatMember(email, chat_id))
+				.update(ch_member).set(data)
+				.where(eq(
+					ch_member.id,
+					this.db.select({ id: sql`chat_member.id` }).from(sql`chat_member`))
+				)
+		}
 
 	}
 
 
-	private chatMember = (email: string, chatId: string) => this.db.$with('chat_admin').as(
-		this.db.select().from(ch_member).where(
+	private chatMember = (email: string, chatId: string) => this.db.$with('chat_member')
+		.as(this.db.select().from(ch_member).where(
 			and(
 				eq(ch_member.user, email),
 				eq(ch_member.chat, chatId)
@@ -154,8 +173,14 @@ export class Chat extends ChatInterface {
 		return await action();
 	}
 
-	async sign(email: string, chat: string, user: string) {
-		return this.member.create(email, chat, user);
+	async invite(email: string, chat: string, user: string) {
+		const member = (await this.member.create(email, chat, user))[0];
+		this.event([user], {type: 'invite', content: {by: email, chat}});
+		return member;
+	}
+
+	async accept(email: string, chat: string) {
+		return this.member.update(email, chat, 'participant');
 	}
 }
 

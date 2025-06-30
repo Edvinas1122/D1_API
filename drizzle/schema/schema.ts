@@ -4,7 +4,7 @@ import { createSelectSchema, createSchemaFactory } from 'drizzle-zod';
 import { z } from "zod";
 import { ZodEmail, ZodEnum, ZodString } from "zod/v4"; 
 
-const { createInsertSchema } = createSchemaFactory({
+const { createInsertSchema, createUpdateSchema } = createSchemaFactory({
 	coerce: {
 	  date: true,
 	}
@@ -135,6 +135,8 @@ export const memberInsertSchema = createInsertSchema(ch_member, {
 	const id = `${data.user}:${data.chat}`;
 	return { ...data, id };
 });
+
+export const memberUpdateSchema = createUpdateSchema(ch_member);
 
 
 /*

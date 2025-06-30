@@ -3,6 +3,7 @@ import { drizzle, DrizzleD1Database } from "drizzle-orm/d1";
 import { TableConfig, SQLiteTableWithColumns, SQLiteTable, SQLiteSelectBuilder  } from "drizzle-orm/sqlite-core";
 import { InferInsertModel } from "drizzle-orm";
 import { ZodError, ZodPipe } from "zod/v4";
+import type { BuildSchema } from "drizzle-zod";
 
 abstract class DB<ENV> extends WorkerEntrypoint<ENV> {
 	protected abstract db: DrizzleD1Database<any>;
@@ -77,114 +78,114 @@ export function Database<ENV>(
 
 type ConcreteDB<ENV> = new (...args: any[]) => InstanceType<ReturnType<typeof Database<ENV>>>;
 
-export function Interface<
-    ENV,
-    Base extends ConcreteDB<ENV>,
-    const T extends Record<string, { table: SQLiteTable, schema: ZodPipe }>
->(
-    BaseClass: Base,
-    interactions: T
-) {
-    type TableNames = keyof T & string;
+// export function Interface<
+//     ENV,
+//     Base extends ConcreteDB<ENV>,
+//     const T extends Record<string, { table: SQLiteTable, schema: ZodPipe }>
+// >(
+//     BaseClass: Base,
+//     interactions: T
+// ) {
+//     type TableNames = keyof T & string;
 
-	type TableConfigFor<K extends TableNames> = 
-		T[K]['table'] extends SQLiteTableWithColumns<infer Config> ? Config : never;
+// 	type TableConfigFor<K extends TableNames> = 
+// 		T[K]['table'] extends SQLiteTableWithColumns<infer Config> ? Config : never;
 
-    return class Interface extends BaseClass {
-        private tables = new Map(
-            Object.entries(interactions).map(([name, config]) => [name, config])
-        );
+//     return class Interface extends BaseClass {
+//         private tables = new Map(
+//             Object.entries(interactions).map(([name, config]) => [name, config])
+//         );
 
-        protected get tablesOnly(): { [K in keyof T]: T[K]['table'] } {
-            const result: any = {};
-            for (const [key, value] of this.tables.entries()) {
-                result[key] = value.table;
-            }
-            return result;
-        }
+//         protected get tablesOnly(): { [K in keyof T]: T[K]['table'] } {
+//             const result: any = {};
+//             for (const [key, value] of this.tables.entries()) {
+//                 result[key] = value.table;
+//             }
+//             return result;
+//         }
 
-        private table<K extends TableNames>(tableName: K): T[K] {
-            const config = this.tables.get(tableName);
-            if (!config) throw new Error(`Missing table config: ${tableName}`);
-            return config as T[K];
-        }
+//         private table<K extends TableNames>(tableName: K): T[K] {
+//             const config = this.tables.get(tableName);
+//             if (!config) throw new Error(`Missing table config: ${tableName}`);
+//             return config as T[K];
+//         }
 
-        protected put<K extends TableNames>(tableName: K) {
-            const config = this.table(tableName);
+//         protected put<K extends TableNames>(tableName: K) {
+//             const config = this.table(tableName);
 
-            return {
-                with: (rawData: Parameters<T[K]['schema']['parse']>[0]) => 
-                    this.insert(
-                        config.table, 
-                        config.schema, 
-                        rawData
-                    ) as Promise<{
-                        result: any,
-                        values: InferInsertModel<T[K]['table']>
-                    }> & {values: InferInsertModel<T[K]['table']>}
-            };
-        }
+//             return {
+//                 with: (rawData: Parameters<T[K]['schema']['parse']>[0]) => 
+//                     this.insert(
+//                         config.table, 
+//                         config.schema, 
+//                         rawData
+//                     ) as Promise<{
+//                         result: any,
+//                         values: InferInsertModel<T[K]['table']>
+//                     }> & {values: InferInsertModel<T[K]['table']>}
+//             };
+//         }
 
 
-        protected paginate<K extends TableNames>(tableName: K) {
-            const config = this.table(tableName);
-            return (page: number, pageSize: number = 20) => {
-                const table = config.table;
-                const query = this._paginate<TableConfigFor<K>>(
-                    table as SQLiteTable<TableConfigFor<K>>,
-                    { page, pageSize }
-                );
-                return query;
-            };
-        }
+//         protected paginate<K extends TableNames>(tableName: K) {
+//             const config = this.table(tableName);
+//             return (page: number, pageSize: number = 20) => {
+//                 const table = config.table;
+//                 const query = this._paginate<TableConfigFor<K>>(
+//                     table as SQLiteTable<TableConfigFor<K>>,
+//                     { page, pageSize }
+//                 );
+//                 return query;
+//             };
+//         }
 
-        protected delete<K extends TableNames>(tableName: K) {
-            const config = this.table(tableName);
+//         protected delete<K extends TableNames>(tableName: K) {
+//             const config = this.table(tableName);
 
-            return this.db.delete(config.table)
-        }
+//             return this.db.delete(config.table)
+//         }
 
-        protected select<K extends TableNames>(tableName: K) {
-            const config = this.table(tableName);
-            return this._select(config.table);
-        }
+//         protected select<K extends TableNames>(tableName: K) {
+//             const config = this.table(tableName);
+//             return this._select(config.table);
+//         }
         
-		protected interact<K extends TableNames>(tableName: K) {
-			type PaginatedQuery = ReturnType<typeof this.paginate<K>> extends (page: number, pageSize?: number) => infer R 
-				? R 
-				: never;
+// 		protected interact<K extends TableNames>(tableName: K) {
+// 			type PaginatedQuery = ReturnType<typeof this.paginate<K>> extends (page: number, pageSize?: number) => infer R 
+// 				? R 
+// 				: never;
 
-			type InsertResult = ReturnType<typeof this.put<K>>['with'] extends (rawData: any) => infer R 
-				? R 
-				: never;
+// 			type InsertResult = ReturnType<typeof this.put<K>>['with'] extends (rawData: any) => infer R 
+// 				? R 
+// 				: never;
 
-			return <
-				ListArgs extends any[],
-				InsertArgs extends any[]
-			>(interactions: {
-				list: (
-					query: PaginatedQuery, 
-					tables: { [P in keyof T]: T[P]['table'] }
-				) => (...args: ListArgs) => Promise<any>,
-				insert: (
-					insertFn: (rawData: Parameters<T[K]['schema']['parse']>[0]) => InsertResult,
-					tables: { [P in keyof T]: T[P]['table'] }
-				) => (...args: InsertArgs) => Promise<any>
-			}) => ({
-				list: (page: number, pageSize: number = 20) => {
-					const query = this.paginate(tableName)(page, pageSize);
-					return (...args: ListArgs) => interactions.list(query, this.tablesOnly)(...args);
-				},
-				insert: () => {
-					const insertFn = (rawData: Parameters<T[K]['schema']['parse']>[0]) => 
-						this.put(tableName).with(rawData);
-					return (...args: InsertArgs) => interactions.insert(insertFn, this.tablesOnly)(...args);
-				}
-			});
-		}
+// 			return <
+// 				ListArgs extends any[],
+// 				InsertArgs extends any[]
+// 			>(interactions: {
+// 				list: (
+// 					query: PaginatedQuery, 
+// 					tables: { [P in keyof T]: T[P]['table'] }
+// 				) => (...args: ListArgs) => Promise<any>,
+// 				insert: (
+// 					insertFn: (rawData: Parameters<T[K]['schema']['parse']>[0]) => InsertResult,
+// 					tables: { [P in keyof T]: T[P]['table'] }
+// 				) => (...args: InsertArgs) => Promise<any>
+// 			}) => ({
+// 				list: (page: number, pageSize: number = 20) => {
+// 					const query = this.paginate(tableName)(page, pageSize);
+// 					return (...args: ListArgs) => interactions.list(query, this.tablesOnly)(...args);
+// 				},
+// 				insert: () => {
+// 					const insertFn = (rawData: Parameters<T[K]['schema']['parse']>[0]) => 
+// 						this.put(tableName).with(rawData);
+// 					return (...args: InsertArgs) => interactions.insert(insertFn, this.tablesOnly)(...args);
+// 				}
+// 			});
+// 		}
         
-    }
-}
+//     }
+// }
 
 type SocketLike = {
     send: (users: string[], message: any) => void;

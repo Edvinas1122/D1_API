@@ -246,17 +246,34 @@ export { Chat, type ChatService }
 export default {
 
 	async fetch(
-		request: Request,
+		request,
+		env,
+		ctx
 	): Promise<Response> {
 
 		const route = new URL(request.url).pathname;
+
+		if (route === 'invite') {
+			const params = new URL(request.url).searchParams
+			const chat = new Chat(ctx, env);
+
+			const email = params.get('email');
+			const chat_name = params.get('chat');
+			const user = params.get('user');
+
+			if (!email || !chat_name || !user) throw new Response('missing search params');
+			await chat.sign(email, chat_name, user);
+
+			return await new Response('signed?')
+		}
 
 		return new Response("Hello from API", {
 			status: 200,
 			headers: { "Content-Type": "text/plain" },
 		});
 	}
-}
+} satisfies ExportedHandler<Env>
+
 import { SocketUtils } from "./socket";
 export {SocketUtils};
 
