@@ -12,6 +12,6 @@ const DB = Database<Env>((env) => [env.MAIN, {logger: true}]);
 
 import { AcceptedMessage } from "@socket/index";
 
-const EventDB = Event<Env, typeof DB, AcceptedMessage>(DB, (env) => env.Socket);
+const EventDB = Event<Env, typeof DB, AcceptedMessage, WebSocketGateService>(DB, (env) => env.Socket);
 
 export {EventDB, DB}

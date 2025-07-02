@@ -208,11 +208,12 @@ export function Event<
     } & {
         [ContentField in ContentKey]: any;
     },
+    SOCKET extends SocketLike = SocketLike,
     const TypeKey extends string = "type",
-    const ContentKey extends string = "content"
+    const ContentKey extends string = "content",
 >(
     BASE: Base,
-    getSocket: (env: ENV) => SocketLike,
+    getSocket: (env: ENV) => SOCKET,
     config?: {
         typeField?: TypeKey;
         contentField?: ContentKey;
@@ -224,7 +225,7 @@ export function Event<
     } = config || {};
 
     return class EVENT_DB extends BASE {
-        private socket = getSocket(this.env);
+        public socket = getSocket(this.env);
 
         protected event(users: string[], message: MessageType) {
             this.socket.send(users, message);

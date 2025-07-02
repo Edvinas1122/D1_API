@@ -1,4 +1,4 @@
-import { getAuthFlowAction, buildAuthFlows, type OAuthConfig } from "./utils/oAuth";
+import { buildAuthFlows, type OAuthConfig } from "./utils/oAuth";
 import { EventDB } from "./interface";
 import type { Env } from "./interface";
 

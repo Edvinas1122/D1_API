@@ -9,4 +9,8 @@ export class SocketUtils extends DB {
 		const response = await this.env.Socket.token(email);
 		return response;
 	}
+
+	async onlineCount() {
+		return await this.env.Socket.online();
+	}
 }

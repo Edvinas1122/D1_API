@@ -93,7 +93,7 @@ class ChatInterface extends EventDB {
 			.where(eq(ch_member.chat, chat))
 			.all(),
 		create: async (email: string, chat: string, user_email: string) => {
-			const data = memberInsertSchema.parse({chat, user: user_email, role: 'invited'})
+			const data = await memberInsertSchema.parseAsync({chat, user: user_email, role: 'invited'})
 			const query = await this.db
 				.with(this.chatMember(email, chat))
 				.insert(ch_member).values(data)
@@ -171,7 +171,18 @@ export class Chat extends ChatInterface {
 	}
 
 	async members(email: string, id: string) {
-		return this.member.list(email, id, 0);
+		const [members, logs] = await Promise.all([
+			this.member.list(email, id, 0),
+			this.socket.logs()
+		])
+		const Tlogs = logs as unknown as {email: string, online: boolean, last_time: number}[]
+
+		return members.map(
+			(member) => ({...member,
+				online: Tlogs.find(lg => lg.email === member.user.email)?.online,
+				last_seen: Tlogs.find(lg => lg.email === member.user.email)?.online
+			}),
+		)
 	}
 
 	async send(email: string, chat: string, content: string) {

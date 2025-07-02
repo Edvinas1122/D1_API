@@ -6,8 +6,6 @@ import {
 } from '@schema/user'
 import { EventDB } from "./interface";
 import { getTokenActions } from "./utils/jwt";
-import type { JWTVerifyResult } from "jose";
-import { OnError } from './utils/error';
 
 
 
@@ -16,6 +14,7 @@ export class User extends EventDB {
 	async list() {
 		return await this._paginate(user, {page:0});
 	}
+
 
 	async sign(data: typeof user.$inferInsert) {
 		const user_data = userInsertSchema.parse(data);
@@ -30,7 +29,7 @@ export class User extends EventDB {
 
 	async verify(token: string) {
 		type User = typeof user.$inferInsert;
-		return await this.token().verify(token) as JWTVerifyResult<User>;
+		return await this.token().verify(token);
 	}
 
 	protected token = () => getTokenActions({
