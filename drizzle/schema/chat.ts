@@ -1,61 +1,7 @@
 import { relations, sql } from "drizzle-orm";
 import { sqliteTable, integer, text, SQLiteColumn, blob } from "drizzle-orm/sqlite-core"
-import { createSelectSchema, createSchemaFactory } from 'drizzle-zod';
-
-import { ZodEmail, ZodEnum, ZodString } from "zod/v4"; 
-
-const { createInsertSchema, createUpdateSchema } = createSchemaFactory({
-	coerce: {
-	  date: true,
-	}
-});
-
-const defaults = {
-	// https://orm.drizzle.team/docs/guides/timestamp-default-value#sqlite
-	current_timestamp: text().default(sql`(current_timestamp)`),
-	// https://orm.drizzle.team/docs/indexes-constraints#foreign-key
-	related: (table_row: SQLiteColumn) => text().notNull().references(() => table_row, {onDelete: 'cascade'})
-}
-
-
-/*
-	User
-*/
-export const user = sqliteTable('user', {
-	email: text().primaryKey(),
-	given_name: text().notNull(),
-	family_name: text().notNull(),
-	name: text().notNull(),
-	picture: text().notNull(),
-	sub: text().notNull(),
-	signed: defaults.current_timestamp
-});
-
-export const userInsertSchema = createInsertSchema(user, {
-	// email: (schema) => (schema as ZodString).email()
-});
-
-/*
-	Logs
-*/
-
-export const log = sqliteTable('log', {
-	id: text().primaryKey(),
-	date: defaults.current_timestamp,
-	route: text().notNull(),
-	ip: text(),
-	country: text(),
-	user: text().references(() => user.email)
-});
-
-export const insertLogSchema = createInsertSchema(log, {
-	id: (schema) =>  (schema as ZodString).optional(),
-	country: (schema) => (schema as ZodString).max(2)
-})
-.transform((data) => {
-	const id = `${data.ip}:${Date.now()}`;
-	return { ...data, id};
-});
+import { defaults, createInsertSchema, createUpdateSchema } from './defaults.util'
+import { ZodString } from "zod/v4";
 
 /*
 	chat
@@ -82,6 +28,9 @@ export const chatInsertSchema = createInsertSchema(chat, {
 		const id = `${data.name}:${Date.now()}`;
 		return {...data, id }
 	})
+
+import {user} from "./user"
+export {user};
 
 /*
 	members
@@ -161,8 +110,8 @@ export const messageInsertSchema = createInsertSchema(message, {
 function formatDate(date: Date) {
   const isoString = date.toISOString();
   return isoString
-    .replace('T', ' ')
-    .replace(/\.\d{3}Z$/, '');
+	.replace('T', ' ')
+	.replace(/\.\d{3}Z$/, '');
 }
 
 

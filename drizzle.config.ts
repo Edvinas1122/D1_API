@@ -1,7 +1,10 @@
 import { defineConfig } from 'drizzle-kit';
 
+const schema = ['chat', 'user']
+  .map(name => `./drizzle/schema/${name}.ts`);
+
 export default defineConfig({
-  schema: './drizzle/schema/schema.ts',
+  schema,
   out: './drizzle/migrations',
   dialect: 'sqlite',
   driver: 'd1-http',

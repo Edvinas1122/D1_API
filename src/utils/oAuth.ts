@@ -57,15 +57,17 @@ export async function getUserOauth(
 	return user as {sub: string, name: string, given_name: string, family_name: string, picture: string, email: string};
 }
 
-type AuthCreds = {
-	client_id: string | undefined,
-	client_secret: string | undefined,
-	token_path: string,
-	auth_path: string
+
+type AuthCreds<ENV extends Record<string, any>> = {
+    client_id_env: keyof ENV & string,  // Must be a string key of ENV
+    client_secret_env: keyof ENV & string,  // Must be a string key of ENV
+    token_path: string,
+    auth_path: string
 }
 
-export function getAuthFlowAction (
-	props: AuthCreds,
+export function getAuthFlowAction<ENV extends Record<string, any>>(
+	env: ENV,
+	props: AuthCreds<ENV>,
 	service_name: string,
 ) {
 
@@ -74,7 +76,9 @@ export function getAuthFlowAction (
 	}
 
 	return async function authFlowAction(url: URL) {
-		const {client_id, client_secret, token_path, auth_path} = props;
+		const {client_id_env, client_secret_env, token_path, auth_path} = props;
+		const client_id = env[client_id_env];
+		const client_secret = env[client_id_env];
 		if (!client_id || !client_secret) return response(`missing ${service_name} api credentials`, 500);
 		
 		const code = url.searchParams.get('code');
@@ -93,3 +97,18 @@ export function getAuthFlowAction (
 	}
 }
 
+
+export function buildAuthFlows<ENV extends Record<string, any>>(
+	env: ENV,
+	config: {[key: string]: AuthCreds<ENV>}
+) {
+	const flows: Record<keyof typeof config, ReturnType<typeof getAuthFlowAction>> = {};
+
+	for (const [serviceName, creds] of Object.entries(config)) {
+		flows[serviceName] = getAuthFlowAction(env, creds, serviceName);
+	}
+
+	return flows;
+}
+
+export type OAuthConfig<ENV extends Record<string, any>> = {[key: string]: AuthCreds<ENV>}
