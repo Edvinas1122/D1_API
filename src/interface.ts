@@ -8,7 +8,9 @@ export interface Env {
 	Socket: WebSocketGateService
 }
 
-const DB = Database<Env>((env) => [env.MAIN, {logger: true}]);
+const DB = Database<Env>((env) => [env.MAIN, {
+	// logger: true
+}]);
 
 import { AcceptedMessage } from "@socket/index";
 

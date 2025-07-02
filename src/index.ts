@@ -31,8 +31,25 @@ app.use('*', (c, next) => {
 
 app.get('/', (c) => c.text('api endpoint'))
 app.get('/user/info', (c) => c.json(c.get('user').tableInfo('chat')))
+app.get('/create_and_invite', async (c) => {
+	const room = await c.get('chat').create('leonlampe0@gmail.com', 'plug-bud')
+	const info = await c.get('chat').invite('leonlampe0@gmail.com', room.chat?.id, 'edvinasmomkus@gmail.com');
+	const message = await c.get('chat').send('leonlampe0@gmail.com', room.chat?.id, 'I am fat');
+	return c.json({data: room, info})
+})
+
+app.get('/send', async (c) => {
+	const data = await c.get('chat').send('leonlampe0@gmail.com', 'plug-bug:1751493283237', "I am fat");
+	return c.json({data})
+})
+
+app.get('/distribute_test', async (c) => {
+	await c.get('chat').test();
+	return c.json({});
+})
 app.get('/invite', (c) => {
-	// c.get('chat').invite()
+	// const email = new URL(c.req.url).searchParams.get('email')
+	// await c.get('chat').invite('leonlampe0@gmail.com', )
 	return c.json({})
 })
 

@@ -228,6 +228,7 @@ export function Event<
         public socket = getSocket(this.env);
 
         protected event(users: string[], message: MessageType) {
+            console.log('calling: ', users)
             this.socket.send(users, message);
         }
 

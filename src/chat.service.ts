@@ -54,6 +54,10 @@ class ChatInterface extends EventDB {
 		delete: async (email: string, id: string) => this.db
 			.with(this.chatMember(email, id))
 			.delete(chat)
+			.where(eq(chat.id, id)),
+		find: async (id: string) => this.db
+			.select().from(chat)
+			.innerJoin(ch_member, eq(chat.id, ch_member.chat))
 			.where(eq(chat.id, id))
 	}
 
@@ -92,16 +96,21 @@ class ChatInterface extends EventDB {
 			.innerJoin(user, eq(ch_member.user, user.email))
 			.where(eq(ch_member.chat, chat))
 			.all(),
+
 		create: async (email: string, chat: string, user_email: string) => {
+
 			const data = await memberInsertSchema.parseAsync({chat, user: user_email, role: 'invited'})
+			
 			const query = await this.db
 				.with(this.chatMember(email, chat))
 				.insert(ch_member).values(data)
 				.returning();
-			const created = this.db.select().from(ch_member)
+
+			const created = await this.db.select().from(ch_member)
 				.innerJoin(user, eq(ch_member.user, user.email))
 				.where(eq(ch_member.id, query[0].id));
-			return created;
+			
+				return created;
 		},
 		update: async (email: string, chat_id: string, role: string) => {
 			const data = memberUpdateSchema.parse({role})
@@ -190,14 +199,14 @@ export class Chat extends ChatInterface {
 		const message = await this.message.create(email, chat, content);
 
 		const distribute = async () => {
-			const members = await this.member.list(email, chat, 0)
+			const users = await this.member.list(email, chat, 0)
 				.then(users => users
 					.filter(user => user.user.email !== email)
 					.map(user => user.user.email)
 				)
-			this.event(members, {type: 'chat', content: message})
+			this.event(users, {type: 'chat', content: message})
 		}
-		
+
 		this.ctx.waitUntil(distribute());
 		
 		return message;
@@ -205,8 +214,19 @@ export class Chat extends ChatInterface {
 
 	async invite(email: string, chat: string, user: string) {
 		const member = (await this.member.create(email, chat, user))[0];
-		this.event([user], {type: 'invite', content: {by: email, chat}});
+		
+		const distribute = async () => {
+			const chat = (await this.chat.find(member.ch_member.chat))[0];
+			this.event([user], {type: 'invite', content: {...chat, by: email}})
+		}
+
+		this.ctx.waitUntil(distribute());
+
 		return member;
+	}
+
+	async test() {
+		this.event(['edvinasmomkus@gmail.com'], {type: 'system', content: {info: 'testing', user: 'me'}})
 	}
 
 	async accept(email: string, chat: string) {
