@@ -25,19 +25,22 @@ class ChatInterface extends EventDB {
 			name: string,
 			description: string,
 		) => {
-			const ch_object = await this.insert(chat, chatInsertSchema, {
+			const ch_object = await chatInsertSchema.parseAsync({
 				name,
-				description
-			});
+				description,
+				creator: email
+			})
+			const result = await this.db.insert(chat).values(ch_object);
 			try {
-				const mb_object = await this.insert(ch_member, memberInsertSchema, {
-					chat: ch_object.values.id,
+				const mb_object = await memberInsertSchema.parseAsync({
+					chat: ch_object.id,
 					user: email,
 					role: 'admin',
-				})
-				return {chat:ch_object.values, ch_member: mb_object.values};
+				});
+				const result_2 = await this.db.insert(ch_member).values(mb_object);
+				return {chat:ch_object, ch_member: mb_object};
 			} catch (error: any) {
-				const del_result = await this.db.delete(chat).where(eq(chat.id, ch_object.values.id));
+				const del_result = await this.db.delete(chat).where(eq(chat.id, ch_object.id));
 				return {error: error.message};
 			}
 		},
@@ -52,7 +55,6 @@ class ChatInterface extends EventDB {
 			.with(this.chatMember(email, id))
 			.delete(chat)
 			.where(eq(chat.id, id))
-		// delete: async (email: string, id: string) => this.forMember(email, id, async (member) => await this.db.delete(chat).where(eq(chat.id, id)))
 	}
 
 	public message = {
@@ -66,8 +68,22 @@ class ChatInterface extends EventDB {
 			email: string,
 			chat: string,
 			content: string
-		) => this.forMember(email, chat, async (member) => this
-			.insert(message, messageInsertSchema, {content, member: member.id, chat}))
+		) => this.forMember(email, chat, async (member) => {
+			
+			const m_object = await messageInsertSchema.parseAsync({
+				content, chat, member: member.id
+			})
+
+			const messages = await this.db
+				.insert(message)
+				.values(m_object)
+				.returning();
+			return messages[0];
+		})
+
+
+		// this.forMember(email, chat, async (member) => this
+		// .insert(message, messageInsertSchema, {content, member: member.id, chat}))
 	}
 
 	public member = {
@@ -126,7 +142,7 @@ class ChatInterface extends EventDB {
 		return result[0];
 	}
 
-	private async forMember<T, ARGS extends any[]>(
+	private async forMember<T>(
 		email: string,
 		chat_id: string,
 		handler: (member: Awaited<ReturnType<typeof this.getMember>>,
@@ -159,18 +175,21 @@ export class Chat extends ChatInterface {
 	}
 
 	async send(email: string, chat: string, content: string) {
-		const sender = async () => this.message.create(email, chat, content)
-				.then(result => result.values)
-		const action = this.withEvent(
-			'chat',
-			sender,
-			async () => this.member.list(email, chat, 0)
+
+		const message = await this.message.create(email, chat, content);
+
+		const distribute = async () => {
+			const members = await this.member.list(email, chat, 0)
 				.then(users => users
 					.filter(user => user.user.email !== email)
 					.map(user => user.user.email)
 				)
-		)
-		return await action();
+			this.event(members, {type: 'chat', content: message})
+		}
+		
+		this.ctx.waitUntil(distribute());
+		
+		return message;
 	}
 
 	async invite(email: string, chat: string, user: string) {

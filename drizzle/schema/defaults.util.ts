@@ -22,3 +22,15 @@ export function formatDate(date: Date) {
     .replace('T', ' ')
     .replace(/\.\d{3}Z$/, '');
 }
+
+/*
+	10 characters (base16): 16¹⁰ = ~1.1 trillion combinations (pretty safe for most use cases)
+*/
+export async function generateHashId(input: string, length = 10): Promise<string> {
+	const encoder = new TextEncoder();
+	const data = encoder.encode(input);
+	const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+	const hashArray = Array.from(new Uint8Array(hashBuffer));
+	const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+	return hashHex.slice(0, length);
+}

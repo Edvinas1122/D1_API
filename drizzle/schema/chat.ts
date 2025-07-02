@@ -1,6 +1,6 @@
 import { relations, sql } from "drizzle-orm";
 import { sqliteTable, integer, text, SQLiteColumn, blob } from "drizzle-orm/sqlite-core"
-import { defaults, createInsertSchema, createUpdateSchema } from './defaults.util'
+import { defaults, createInsertSchema, createUpdateSchema, generateHashId } from './defaults.util'
 import { ZodString } from "zod/v4";
 
 /*
@@ -14,8 +14,16 @@ export const chat = sqliteTable('chat', {
 		.$type<"public" | "private">()
 		.default("public"),
 	description: text('description').default(''),
+	creator: text('creator').references(() => user.email),
 	created_at: defaults.current_timestamp,
 });
+
+export const chatRelations = relations(chat, ({one}) => ({
+	user: one(user, {
+		fields: [chat.creator],
+		references: [user.email]
+	}),
+})) 
 
 // Insert schema generates unique ID
 export const chatInsertSchema = createInsertSchema(chat, {
@@ -65,8 +73,8 @@ export const memberInsertSchema = createInsertSchema(ch_member, {
 	// role: z.enum(['invited', 'blocked', 'participant', 'admin']).optional(), // validate and default
 	about: (schema) => (schema as ZodString).max(300).optional(),
 })
-.transform((data) => {
-	const id = `${data.user}:${data.chat}`;
+.transform(async (data) => {
+	const id = await generateHashId(`${data.user}:${data.chat}`)
 	return { ...data, id };
 });
 
@@ -101,11 +109,12 @@ export const messageInsertSchema = createInsertSchema(message, {
 	chat: (schema) => (schema as ZodString).min(1),
 	member: (schema) => (schema as ZodString).min(1),
 	content: (schema) => (schema as ZodString).min(1).max(1000),})
-.transform((data) => {
-	const id = `${data.member}:${data.chat}:${Date.now()}`;
+.transform(async (data) => {
+	const id = await generateHashId(`${data.member}:${data.chat}:${Date.now()}`);
 	const sent = formatDate(new Date);
 	return { ...data, id, sent};
 });
+
 
 function formatDate(date: Date) {
   const isoString = date.toISOString();
