@@ -7,6 +7,7 @@ import {
 import { EventDB } from "./interface";
 import { getTokenActions } from "./utils/jwt";
 import type { JWTVerifyResult } from "jose";
+import { OnError } from './utils/error';
 
 
 
@@ -16,10 +17,9 @@ export class User extends EventDB {
 		return await this._paginate(user, {page:0});
 	}
 
-	// @OnError('sign-in error')
 	async sign(data: typeof user.$inferInsert) {
 		const user_data = userInsertSchema.parse(data);
-
+		console.log(user_data);
 		const status = await this.db.insert(user).values(user_data)
 			.onConflictDoNothing({target: user.email});
 		

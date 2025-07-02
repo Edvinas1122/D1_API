@@ -10,7 +10,7 @@ export const user = sqliteTable('user', {
 	name: text().notNull(),
 	picture: text().notNull(),
 	sub: text().notNull(),
-	signed: defaults.current_timestamp
+	added: defaults.current_timestamp
 });
 
 export const userInsertSchema = createInsertSchema(user);

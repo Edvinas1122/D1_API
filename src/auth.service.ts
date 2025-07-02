@@ -13,7 +13,7 @@ const oAuthConfig: OAuthConfig<Env> = {
 } 
 
 export class Auth extends EventDB {
-	private flows = buildAuthFlows(this.env, oAuthConfig);
+	private flows = buildAuthFlows(this.env, oAuthConfig)
 
     async fetchUser(service: keyof typeof this.flows, url: string) {
         if (!this.flows[service]) {

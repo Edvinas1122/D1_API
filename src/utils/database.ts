@@ -4,6 +4,7 @@ import { TableConfig, SQLiteTableWithColumns, SQLiteTable, SQLiteSelectBuilder  
 import { InferInsertModel } from "drizzle-orm";
 import { ZodError, ZodPipe } from "zod/v4";
 import type { BuildSchema } from "drizzle-zod";
+import { sql } from "drizzle-orm";
 
 abstract class DB<ENV> extends WorkerEntrypoint<ENV> {
 	protected abstract db: DrizzleD1Database<any>;
@@ -29,6 +30,14 @@ export function Database<ENV>(
 	return class DATABASE extends DB<ENV> {
 		
 		protected db = drizzle(...getDB(this.env));
+
+		async tableInfo(name: string) {
+			const tableMetadata = await this.db.run(
+				sql`PRAGMA table_info('${name}')`
+			);
+			console.log(tableMetadata);
+			return tableMetadata;
+		}
 
 		protected _paginate<T extends TableConfig>(
 			source: SQLiteTable<T>,

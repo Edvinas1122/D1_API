@@ -2,44 +2,38 @@ import {Chat, type ChatService} from "./chat.service";
 import {User, Log, type UserService, type LogService} from "./user.service"
 import { Auth, type AuthService } from "./auth.service";
 import { SocketUtils } from "./socket.service";
-export {SocketUtils};
 
 /*
 	Exporting multiple services via Named Worker Entry Point
 	https://developers.cloudflare.com/workers/runtime-apis/bindings/service-bindings/rpc/#named-entrypoints
 */
-export { Chat, User }
+export { Chat, User, Auth, Log, SocketUtils }
 export type {UserService, ChatService, LogService, AuthService}
 export type SocketUtilsService = InstanceType<typeof SocketUtils>;
 
+import { Hono, MiddlewareHandler } from 'hono'
+import { WorkerEntrypoint } from "cloudflare:workers";
 
-export default {
+const app = new Hono()
 
-	async fetch(
-		request,
-		env,
-		ctx
-	): Promise<Response> {
-
-		const route = new URL(request.url).pathname;
-
-		if (route === 'invite') {
-			const params = new URL(request.url).searchParams
-			const chat = new Chat(ctx, env);
-
-			const email = params.get('email');
-			const chat_name = params.get('chat');
-			const user = params.get('user');
-
-			if (!email || !chat_name || !user) throw new Response('missing search params');
-			await chat.invite(email, chat_name, user);
-
-			return await new Response('signed?')
-		}
-
-		return new Response("Hello from API", {
-			status: 200,
-			headers: { "Content-Type": "text/plain" },
-		});
+declare module 'hono' {
+	interface ContextVariableMap {
+		chat: ChatService;
+		user: UserService
 	}
-} satisfies ExportedHandler<Env>
+}
+
+app.use('*', (c, next) => {
+	c.set('chat', new Chat(c.executionCtx, c.env));
+	c.set('user', new User(c.executionCtx, c.env));
+	return next()
+});
+
+app.get('/', (c) => c.text('api endpoint'))
+app.get('/user/info', (c) => c.json(c.get('user').tableInfo('chat')))
+app.get('/invite', (c) => {
+	// c.get('chat').invite()
+	return c.json({})
+})
+
+export default app

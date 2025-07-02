@@ -78,7 +78,7 @@ export function getAuthFlowAction<ENV extends Record<string, any>>(
 	return async function authFlowAction(url: URL) {
 		const {client_id_env, client_secret_env, token_path, auth_path} = props;
 		const client_id = env[client_id_env];
-		const client_secret = env[client_id_env];
+		const client_secret = env[client_secret_env];
 		if (!client_id || !client_secret) return response(`missing ${service_name} api credentials`, 500);
 		
 		const code = url.searchParams.get('code');
