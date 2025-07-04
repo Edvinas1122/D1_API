@@ -16,10 +16,6 @@ import { eq, and, desc, sql} from "drizzle-orm";
 class ChatInterface extends EventDB {
 
 	protected chat = {
-		// get: async (email: string, id: string) => {
-		// 	return this.db.select().from(chat)
-				
-		// },
 		create: async (
 			email: string,
 			name: string,
@@ -84,10 +80,6 @@ class ChatInterface extends EventDB {
 				.returning();
 			return messages[0];
 		})
-
-
-		// this.forMember(email, chat, async (member) => this
-		// .insert(message, messageInsertSchema, {content, member: member.id, chat}))
 	}
 
 	public member = {
@@ -121,7 +113,14 @@ class ChatInterface extends EventDB {
 					ch_member.id,
 					this.db.select({ id: sql`chat_member.id` }).from(sql`chat_member`))
 				)
-		}
+		},
+		delete: async (email: string, chat_id: string) => this.db
+			.with(this.chatMember(email, chat_id))
+			.delete(ch_member)
+			.where(eq(
+				ch_member.id,
+				this.db.select({ id: sql`chat_member.id` }).from(sql`chat_member`))
+			)
 
 	}
 
@@ -172,6 +171,15 @@ export class Chat extends ChatInterface {
 	}
 
 	async delete(email: string, id: string) {
+		const distribute = async () => {
+			const members = await this.member.list(email, id, 0);
+			const mb = members.map(m => m.user.email);
+			this.event(mb, {type: 'delete', content: {
+				chat: id,
+				by: email
+			}});
+		}
+		this.ctx.waitUntil(distribute());
 		return this.chat.delete(email, id);
 	}
 
@@ -204,7 +212,8 @@ export class Chat extends ChatInterface {
 					.filter(user => user.user.email !== email)
 					.map(user => user.user.email)
 				)
-			this.event(users, {type: 'chat', content: message})
+			const sentTo = await this.event(users, {type: 'chat', content: message});
+			console.log(sentTo)
 		}
 
 		this.ctx.waitUntil(distribute());
@@ -225,13 +234,29 @@ export class Chat extends ChatInterface {
 		return member;
 	}
 
-	async test() {
-		this.event(['edvinasmomkus@gmail.com'], {type: 'system', content: {info: 'testing', user: 'me'}})
+	async accept(email: string, chat: string) {
+		const handle_and_distribute = async () => {
+			const [users, _] = await Promise.all([
+				this.member.list(email, chat, 0)
+					.then(users => users
+						.filter(user => user.user.email !== email)
+						.map(user => user.user.email)
+					),
+				this.member.update(email, chat, 'participant'),
+			])
+			await this.event(users, {type: 'accept', content: {
+				chat,
+				by: email
+			}})
+		}
+
+		this.ctx.waitUntil(handle_and_distribute());
 	}
 
-	async accept(email: string, chat: string) {
-		return this.member.update(email, chat, 'participant');
+	async leave(email: string, chat: string) {
+		await this.member.delete(email, chat);
 	}
+
 }
 
 export type ChatService = InstanceType<typeof Chat>

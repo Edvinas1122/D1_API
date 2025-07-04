@@ -23,6 +23,26 @@ declare module 'hono' {
 	}
 }
 
+import { Context, Handler } from 'hono'
+
+function withQueryParams<K extends string>(
+  keys: readonly K[],
+  handler: (c: Context, params: Record<K, string>) => ReturnType<Handler>
+): Handler {
+  return (c) => {
+    const params = Object.fromEntries(
+    	keys.map((key) => [key, new URL(c.req.url).searchParams.get(key)])
+    ) as Record<K, string | null>;
+
+    if (Object.values(params).some((value) => value === null)) {
+      return new Response('Missing required query parameter', { status: 400 });
+    }
+
+    // Cast is safe after null-check
+    return handler(c, params as Record<K, string>);
+  };
+}
+
 app.use('*', (c, next) => {
 	c.set('chat', new Chat(c.executionCtx, c.env));
 	c.set('user', new User(c.executionCtx, c.env));
@@ -30,7 +50,7 @@ app.use('*', (c, next) => {
 });
 
 app.get('/', (c) => c.text('api endpoint'))
-app.get('/user/info', (c) => c.json(c.get('user').tableInfo('chat')))
+
 app.get('/create_and_invite', async (c) => {
 	const room = await c.get('chat').create('leonlampe0@gmail.com', 'plug-bud')
 	const info = await c.get('chat').invite('leonlampe0@gmail.com', room.chat?.id, 'edvinasmomkus@gmail.com');
@@ -38,19 +58,24 @@ app.get('/create_and_invite', async (c) => {
 	return c.json({data: room, info})
 })
 
-app.get('/send', async (c) => {
-	const data = await c.get('chat').send('leonlampe0@gmail.com', 'plug-bug:1751493283237', "I am fat");
-	return c.json({data})
-})
+app.get('/accept', 
+	withQueryParams(
+		['chat'],
+		async (c, {chat}) => {
+			c.get('chat').accept('leonlampe0@gmail.com', chat);
+			return c.json({message: 'action-accept'})
+		}
+	)
+)
 
-app.get('/distribute_test', async (c) => {
-	await c.get('chat').test();
-	return c.json({});
-})
-app.get('/invite', (c) => {
-	// const email = new URL(c.req.url).searchParams.get('email')
-	// await c.get('chat').invite('leonlampe0@gmail.com', )
-	return c.json({})
-})
+app.get('/send', 
+	withQueryParams(
+		['content', 'chat'],
+		async (c, {content, chat}) => {
+			const data = await c.get('chat')
+				.send('leonlampe0@gmail.com', chat, content);
+			return c.json({data})
+	})
+)
 
 export default app

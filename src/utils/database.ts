@@ -197,7 +197,7 @@ type ConcreteDB<ENV> = new (...args: any[]) => InstanceType<ReturnType<typeof Da
 // }
 
 type SocketLike = {
-    send: (users: string[], message: any) => void;
+    send: (users: string[], message: any) => Promise<string[]>;
 };
 
 export function Event<
@@ -227,35 +227,34 @@ export function Event<
     return class EVENT_DB extends BASE {
         public socket = getSocket(this.env);
 
-        protected event(users: string[], message: MessageType) {
-            console.log('calling: ', users)
-            this.socket.send(users, message);
+        protected async event(users: string[], message: MessageType) {
+            return await this.socket.send(users, message);
         }
 
-        protected withEvent<
-            T extends MessageType[TypeKey],
-            A extends any[],
-            R extends MessageType[ContentKey]
-        >(
-            type: T,
-            handler: (...args: A) => Promise<R>,
-            informer: (...args: A) => Promise<string[]>
-        ): (...args: A) => Promise<R> {
-            return async (...args: A): Promise<R> => {
-                console.log('calling event handler');
-                const [message, receivers] = await Promise.all([
-                    handler(...args),
-                    informer(...args)
-                ]);
+        // protected withEvent<
+        //     T extends MessageType[TypeKey],
+        //     A extends any[],
+        //     R extends MessageType[ContentKey]
+        // >(
+        //     type: T,
+        //     handler: (...args: A) => Promise<R>,
+        //     informer: (...args: A) => Promise<string[]>
+        // ): (...args: A) => Promise<R> {
+        //     return async (...args: A): Promise<R> => {
+        //         console.log('calling event handler');
+        //         const [message, receivers] = await Promise.all([
+        //             handler(...args),
+        //             informer(...args)
+        //         ]);
 
-                const eventMessage = {
-                    [typeField]: type,
-                    [contentField]: message
-                } as MessageType;
+        //         const eventMessage = {
+        //             [typeField]: type,
+        //             [contentField]: message
+        //         } as MessageType;
 
-                this.event(receivers, eventMessage);
-                return message;
-            };
-        }
+        //         this.event(receivers, eventMessage);
+        //         return message;
+        //     };
+        // }
     };
 }

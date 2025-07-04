@@ -1,4 +1,4 @@
-import DB, { Token } from "./api";
+import { DB } from "./interface";
 import { OnError } from "./utils/error";
 
 export class SocketUtils extends DB {
@@ -13,4 +13,6 @@ export class SocketUtils extends DB {
 	async onlineCount() {
 		return await this.env.Socket.online();
 	}
+
+	
 }
