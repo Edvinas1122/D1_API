@@ -33,7 +33,7 @@
 
 	"services": [
 		{"binding": "Socket", "service": "socket", "entrypoint": "WebScoketGate"}
-	],
+	]
 
 	/**
 	 * Environment Variables
