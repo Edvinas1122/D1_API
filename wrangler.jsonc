@@ -15,7 +15,7 @@
 			"binding": "MAIN",
 			"database_name": "curly-darkness-69f0-db",
 			"database_id": "e19eec14-e40c-4272-8999-30d29d5d366e",
-			"migrations_dir": "drizzle/migrations"
+			"migrations_dir": "/database/migrations"
 		}
 	],
 	/**
@@ -33,13 +33,13 @@
 
 	"services": [
 		{"binding": "Socket", "service": "socket", "entrypoint": "WebScoketGate"}
-	]
+	],
 
 	/**
 	 * Environment Variables
 	 * https://developers.cloudflare.com/workers/wrangler/configuration/#environment-variables
 	 */
-	// "vars": { "MY_VARIABLE": "production_value" },
+	"vars": { "GOOGLE_SECRET": "hidden", "PUBLIC_GOOGLE_ID": "hidden" }
 	/**
 	 * Note: Use secrets to store sensitive data.
 	 * https://developers.cloudflare.com/workers/configuration/secrets/
