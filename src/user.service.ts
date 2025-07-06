@@ -3,7 +3,7 @@ import {
 	userInsertSchema,
 	log,
 	insertLogSchema
-} from '@schema/user'
+} from './schema/user'
 import { EventDB } from "./interface";
 import { getTokenActions } from "./utils/jwt";
 

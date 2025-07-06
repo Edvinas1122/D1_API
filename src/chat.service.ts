@@ -7,7 +7,7 @@ import {
 	chat,
 	chatInsertSchema,
 	user
-} from '@schema/chat'
+} from './schema/chat'
 
 import { EventDB } from "./interface"
 

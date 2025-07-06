@@ -2,7 +2,7 @@
 	"compilerOptions": {
 		// "baseUrl": "./",
 		"paths": {
-			"@schema/*": ["./drizzle/schema/*"],
+			"@schema/*": ["./src/schema/*"],
 			"@socket/*": ["../socket/src/*"],
 		},
 		/* Visit https://aka.ms/tsconfig.json to read more about this file */
