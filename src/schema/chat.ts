@@ -80,6 +80,7 @@ export const memberInsertSchema = createInsertSchema(ch_member, {
 
 export const memberUpdateSchema = createUpdateSchema(ch_member);
 
+import { file } from "./file";
 
 /*
 	Message
@@ -90,6 +91,7 @@ export const message = sqliteTable('message', {
 	member: defaults.related(ch_member.id),
 	content: text()
 		.notNull(),
+	file: text('file').references(() => file.key, {onDelete: "no action"}),
 	sent: defaults.current_timestamp
 });
 

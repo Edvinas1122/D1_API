@@ -1,13 +1,14 @@
 import {Chat, type ChatService} from "./chat.service";
 import {User, Log, type UserService, type LogService} from "./user.service"
 import { Auth, type AuthService } from "./auth.service";
+import { Upload } from "./bucket.service";
 import { SocketUtils } from "./socket.service";
 
 /*
 	Exporting multiple services via Named Worker Entry Point
 	https://developers.cloudflare.com/workers/runtime-apis/bindings/service-bindings/rpc/#named-entrypoints
 */
-export { Chat, User, Auth, Log, SocketUtils }
+export { Chat, User, Auth, Log, SocketUtils, Upload }
 export type {UserService, ChatService, LogService, AuthService}
 export type SocketUtilsService = InstanceType<typeof SocketUtils>;
 
@@ -19,7 +20,8 @@ const app = new Hono()
 declare module 'hono' {
 	interface ContextVariableMap {
 		chat: ChatService;
-		user: UserService
+		user: UserService;
+		upload: InstanceType<typeof Upload>;
 	}
 }
 
@@ -46,6 +48,7 @@ function withQueryParams<K extends string>(
 app.use('*', (c, next) => {
 	c.set('chat', new Chat(c.executionCtx, c.env));
 	c.set('user', new User(c.executionCtx, c.env));
+	c.set('upload', new Upload(c.executionCtx, c.env));
 	return next()
 });
 
@@ -67,6 +70,22 @@ app.get('/accept',
 		}
 	)
 )
+
+app.get('/upload/signed',
+	withQueryParams(
+		['key'],
+		async (c, {key}) => {
+			const data = await c.get('upload')
+				.getSignedUrl('blog-store', key, {
+					// expiresInSeconds: 3600,
+					expiresInSeconds: 60 * 60, // 1 hour
+					contentType: 'application/octet-stream',
+					lenght: 0
+				});
+			return c.json({data})
+		}
+	)
+) 
 
 app.get('/send', 
 	withQueryParams(

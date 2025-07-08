@@ -33,8 +33,10 @@
 
 	"services": [
 		{"binding": "Socket", "service": "socket", "entrypoint": "WebScoketGate"}
+	],
+	"r2_buckets": [
+		{"binding": "BUCKET", "bucket_name": "blog-store"}
 	]
-
 	/**
 	 * Environment Variables
 	 * https://developers.cloudflare.com/workers/wrangler/configuration/#environment-variables

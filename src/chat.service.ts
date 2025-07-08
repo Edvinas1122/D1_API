@@ -12,6 +12,7 @@ import {
 import { EventDB } from "./interface"
 
 import { eq, and, desc, sql} from "drizzle-orm";
+import { file } from './schema/file';
 
 class ChatInterface extends EventDB {
 
@@ -62,23 +63,30 @@ class ChatInterface extends EventDB {
 			email: string,
 			chat: string,
 			page: number = 0
-		) => this._paginate(message, {page, pageSize: 20})
-			.where(eq(message.chat, chat)),
+		) => this.db.select()
+			.from(message).leftJoin(file, eq(message.file, file.key)
+			).where(eq(message.chat, chat)),
 		create: async (
 			email: string,
 			chat: string,
-			content: string
+			content: string,
+			file_key?: string
 		) => this.forMember(email, chat, async (member) => {
-			
+			console.log("createing with key:", file_key)
 			const m_object = await messageInsertSchema.parseAsync({
-				content, chat, member: member.id
+				content, chat, member: member.id, file: file_key
 			})
-
-			const messages = await this.db
+			console.log(m_object)
+			const messages = this.db
 				.insert(message)
 				.values(m_object)
 				.returning();
-			return messages[0];
+
+			const file_prom = file_key ? this.db.select().from(file).where(eq(file.key, file_key)) : null
+
+			const [mess, fil] = await Promise.all([messages, file_prom]);
+
+			return {...mess[0], file: fil?.length ? {type: fil[0].type, url: fil[0].link, key: fil[0].key} : null}
 		})
 	}
 
@@ -184,7 +192,10 @@ export class Chat extends ChatInterface {
 	}
 
 	async messages(email: string, id: string) {
-		return this.message.list(email, id);
+		return this.message.list(email, id).then(messages => messages.map(object => ({
+			...object.message,
+			file: object.file && {type: object.file.type, key: object.file.key, url: object.file.link}
+		})))
 	}
 
 	async members(email: string, id: string) {
@@ -202,9 +213,9 @@ export class Chat extends ChatInterface {
 		)
 	}
 
-	async send(email: string, chat: string, content: string) {
+	async send(email: string, chat: string, content: string, file_key?: string) {
 
-		const message = await this.message.create(email, chat, content);
+		const message = await this.message.create(email, chat, content, file_key);
 
 		const distribute = async () => {
 			const users = await this.member.list(email, chat, 0)

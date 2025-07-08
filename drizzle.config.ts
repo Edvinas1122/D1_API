@@ -1,11 +1,11 @@
 import { defineConfig } from 'drizzle-kit';
 
-const schema = ['chat', 'user']
+const schema = ['chat', 'user', 'file']
   .map(name => `./src/schema/${name}.ts`);
 
 export default defineConfig({
   schema,
-  out: process.env.DRIZZLE_OUT || '/database',
+  out: './database',
   dialect: 'sqlite',
   driver: 'd1-http',
   dbCredentials: {
