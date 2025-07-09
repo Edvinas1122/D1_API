@@ -1,0 +1,9 @@
+package-lock.json
+node_modules/
+dist/
+dev.vars
+worker-configuration.d.ts
+.wrangler/
+_*.*
+.env
+database/
