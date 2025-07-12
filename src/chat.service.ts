@@ -44,8 +44,13 @@ class ChatInterface extends EventDB {
 		list: async (
 			email: string,
 			page: number = 0
-		) => await this._paginate(chat, {page, pageSize: 20})
-			.innerJoin(ch_member, eq(chat.id, ch_member.chat))
+		) => this.db.select().from(chat)
+		// this._paginate(chat, {page, pageSize: 20})
+			.limit(20)
+			.innerJoin(ch_member, and(
+				eq(chat.id, ch_member.chat),
+				eq(ch_member.user, email)
+			))
 			.where(eq(ch_member.user, email))
 			.all(),
 		delete: async (email: string, id: string) => this.db
