@@ -176,7 +176,9 @@ class ChatInterface extends EventDB {
 
 export class Chat extends ChatInterface {
 	async list(email: string) {
-		return this.chat.list(email)
+		return this.chat.list(email).then((response) => response.map(item => ({
+			...item.chat, my_role: item.ch_member.role
+		})))
 	}
 
 	async create(email: string, name: string) {
