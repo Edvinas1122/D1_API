@@ -182,7 +182,9 @@ export class Chat extends ChatInterface {
 	}
 
 	async create(email: string, name: string) {
-		return await this.chat.create(email, name, '');
+		return await this.chat.create(email, name, '').then(res => ({
+			...res.chat, my_role: res.ch_member?.role
+		}))
 	}
 
 	async delete(email: string, id: string) {
