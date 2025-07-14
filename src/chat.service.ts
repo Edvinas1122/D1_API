@@ -215,7 +215,11 @@ export class Chat extends ChatInterface {
 		const Tlogs = logs as unknown as {email: string, online: boolean, last_time: number}[]
 
 		return members.map(
-			(member) => ({...member,
+			(member) => ({
+				// ...member,
+				picture: member.user.picture,
+				name: member.user.given_name,
+				...member.ch_member,
 				online: Tlogs.find(lg => lg.email === member.user.email)?.online,
 				last_seen: Tlogs.find(lg => lg.email === member.user.email)?.online
 			}),
@@ -251,7 +255,11 @@ export class Chat extends ChatInterface {
 
 		this.ctx.waitUntil(distribute());
 
-		return member;
+		return {
+			picture: member.user.picture,
+			name: member.user.given_name,
+			...member.ch_member
+		}
 	}
 
 	async accept(email: string, chat: string) {
