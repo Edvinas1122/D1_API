@@ -106,6 +106,7 @@ class ChatInterface extends EventDB {
 
 			const data = await memberInsertSchema.parseAsync({chat, user: user_email, role: 'invited'})
 			
+			// console.log(data);
 			const query = await this.db
 				.with(this.chatMember(email, chat))
 				.insert(ch_member).values(data)

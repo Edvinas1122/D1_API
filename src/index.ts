@@ -61,6 +61,20 @@ app.get('/create_and_invite', async (c) => {
 	return c.json({data: room, info})
 })
 
+app.get('/dummyUser', withQueryParams(
+	['name'],
+	async (c, {name}) => {
+		const tok = await c.get('user').sign({
+			name,
+			email: `${name}@gmail.com`,
+			picture: "https://lh3.googleusercontent.com/a/ACg8ocKLrIEeTe5uEhAP35v4sBCM9OSwezEtRpLIW4IouBqXuDXkoaKz=s96-c",
+			sub: "143250324",
+			family_name: name,
+			given_name: name
+		})
+		return c.json(tok)
+}))
+
 app.get('/accept', 
 	withQueryParams(
 		['chat'],
